@@ -1,0 +1,4 @@
+#include <windows.h>
+
+// 嵌入 Per-Monitor DPI manifest 清单
+1 24 "app.manifest"
