@@ -1,0 +1,232 @@
+(function() {
+  var style = getComputedStyle(document.documentElement);
+  var accent = style.getPropertyValue('--accent').trim();
+  var accent2 = style.getPropertyValue('--accent2').trim();
+  var ink = style.getPropertyValue('--ink').trim();
+  var muted = style.getPropertyValue('--muted').trim();
+  var rule = style.getPropertyValue('--rule').trim();
+  var bg2 = style.getPropertyValue('--bg2').trim();
+  var success = style.getPropertyValue('--success').trim();
+  var warning = style.getPropertyValue('--warning').trim();
+
+  // --- Chart: Gantt ---
+  var ganttChart = echarts.init(document.getElementById('chart-gantt'), null, { renderer: 'svg' });
+
+  // Gantt data: each task has name, start week, end week, line(0=frontend,1=backend,2=ai)
+  var tasks = [
+    // Frontend line (前端)
+    { name: '主窗口框架', start: 0, end: 2, line: 0, phase: '阶段一' },
+    { name: '数据块配置界面(A)', start: 2, end: 5, line: 0, phase: '阶段二' },
+    { name: '流程编排画布(B)', start: 2, end: 6, line: 0, phase: '阶段二' },
+    { name: '判读配置界面(C)', start: 3, end: 7, line: 0, phase: '阶段二' },
+    { name: '模块联调与优化', start: 7, end: 10, line: 0, phase: '阶段三' },
+    { name: 'AI交互界面', start: 10, end: 13, line: 0, phase: '阶段四' },
+
+    // Backend line (后端)
+    { name: 'DB schema & 基础库', start: 0, end: 2, line: 1, phase: '阶段一' },
+    { name: '数据块服务(A)', start: 2, end: 4, line: 1, phase: '阶段二' },
+    { name: '流程引擎服务(B)', start: 3, end: 7, line: 1, phase: '阶段二' },
+    { name: '判读规则服务(C)', start: 4, end: 7, line: 1, phase: '阶段二' },
+    { name: '集成联调', start: 7, end: 10, line: 1, phase: '阶段三' },
+    { name: '性能优化', start: 11, end: 13, line: 1, phase: '阶段四' },
+
+    // AI line (AI)
+    { name: 'AI插件框架', start: 1, end: 2, line: 2, phase: '阶段一' },
+    { name: '接口定义与Mock', start: 2, end: 4, line: 2, phase: '阶段二' },
+    { name: '参数推荐插件', start: 6, end: 9, line: 2, phase: '阶段三/四' },
+    { name: '流程生成插件', start: 8, end: 11, line: 2, phase: '阶段四' },
+    { name: '判读辅助插件', start: 9, end: 12, line: 2, phase: '阶段四' },
+    { name: '反馈闭环', start: 11, end: 13, line: 2, phase: '阶段四' },
+  ];
+
+  var lineNames = ['前端开发线', '后端开发线', 'AI 扩展线'];
+  var lineColors = [accent, accent2, success];
+
+  // Build category data (y-axis)
+  var categories = [];
+  var taskMap = {};
+  tasks.forEach(function(t, i) {
+    var label = lineNames[t.line] + ' · ' + t.name;
+    categories.push(label);
+    taskMap[label] = t;
+  });
+
+  // Build series data for custom bars
+  var seriesData = tasks.map(function(t, i) {
+    return {
+      value: [categories.length - 1 - i, t.start, t.end, t.line, t.phase, t.name],
+      itemStyle: {
+        color: lineColors[t.line],
+        borderRadius: [4, 4, 4, 4]
+      }
+    };
+  });
+
+  ganttChart.setOption({
+    animation: false,
+    tooltip: {
+      appendToBody: true,
+      formatter: function(params) {
+        var d = params.value;
+        var weekStart = '第' + (d[1] + 1) + '周';
+        var weekEnd = '第' + d[2] + '周';
+        var duration = d[2] - d[1] + ' 周';
+        return '<div style="font-weight:600;margin-bottom:4px">' + d[5] + '</div>'
+          + '<div style="font-size:12px;color:' + muted + '">阶段：' + d[4] + '</div>'
+          + '<div style="font-size:12px;color:' + muted + '">时间：' + weekStart + ' → ' + weekEnd + '</div>'
+          + '<div style="font-size:12px;color:' + muted + '">工期：' + duration + '</div>';
+      }
+    },
+    grid: {
+      left: 140,
+      right: 30,
+      top: 50,
+      bottom: 40
+    },
+    xAxis: {
+      type: 'value',
+      min: 0,
+      max: 14,
+      interval: 1,
+      axisLabel: {
+        formatter: function(v) { return 'W' + (v + 1); },
+        color: muted,
+        fontSize: 11
+      },
+      axisLine: { lineStyle: { color: rule } },
+      splitLine: { lineStyle: { color: rule, type: 'dashed' } }
+    },
+    yAxis: {
+      type: 'category',
+      data: categories.slice().reverse(),
+      axisLabel: {
+        color: ink,
+        fontSize: 12,
+        formatter: function(v) {
+          var parts = v.split(' · ');
+          return parts[1] || v;
+        }
+      },
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    series: [{
+      type: 'custom',
+      renderItem: function(params, api) {
+        var categoryIndex = api.value(0);
+        var start = api.coord([api.value(1), categoryIndex]);
+        var end = api.coord([api.value(2), categoryIndex]);
+        var height = api.size([0, 1])[1] * 0.6;
+
+        var rectShape = echarts.graphic.clipRectByRect({
+          x: start[0],
+          y: start[1] - height / 2,
+          width: end[0] - start[0],
+          height: height
+        }, {
+          x: params.coordSys.x,
+          y: params.coordSys.y,
+          width: params.coordSys.width,
+          height: params.coordSys.height
+        });
+
+        return rectShape && {
+          type: 'rect',
+          transition: ['shape'],
+          shape: rectShape,
+          style: api.style()
+        };
+      },
+      encode: {
+        x: [1, 2],
+        y: 0
+      },
+      data: seriesData
+    }],
+    // Phase background bands
+    graphic: [
+      {
+        type: 'rect',
+        left: 140,
+        top: 50,
+        shape: { width: 0, height: 0 },
+        style: { fill: 'rgba(37, 99, 235, 0.04)' },
+        z: -1
+      }
+    ]
+  });
+
+  // Add phase labels manually via graphic
+  // (Calculate positions dynamically after chart is ready)
+  function addPhaseLabels() {
+    var phases = [
+      { name: '阶段一', start: 0, end: 2, color: accent },
+      { name: '阶段二', start: 2, end: 7, color: accent2 },
+      { name: '阶段三', start: 7, end: 10, color: success },
+      { name: '阶段四', start: 10, end: 14, color: warning }
+    ];
+
+    var xAxis = ganttChart.getModel().getComponent('xAxis', 0);
+    if (!xAxis) return;
+
+    var graphicElements = [];
+    phases.forEach(function(p) {
+      var startCoord = ganttChart.convertToPixel({ xAxisIndex: 0 }, p.start);
+      var endCoord = ganttChart.convertToPixel({ xAxisIndex: 0 }, p.end);
+      var gridTop = 50;
+      var gridHeight = ganttChart.getHeight() - 90;
+
+      graphicElements.push({
+        type: 'rect',
+        shape: {
+          x: startCoord,
+          y: gridTop,
+          width: endCoord - startCoord,
+          height: gridHeight
+        },
+        style: {
+          fill: p.color,
+          opacity: 0.04
+        },
+        z: -1,
+        silent: true
+      });
+    });
+
+    ganttChart.setOption({
+      graphic: graphicElements
+    });
+  }
+
+  ganttChart.on('finished', function() {
+    // Only run once
+    if (!ganttChart._phaseLabelsAdded) {
+      ganttChart._phaseLabelsAdded = true;
+      addPhaseLabels();
+    }
+  });
+
+  window.addEventListener('resize', function() {
+    ganttChart.resize();
+    ganttChart._phaseLabelsAdded = false;
+  });
+
+  // Mermaid init
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      securityLevel: 'loose',
+      themeVariables: {
+        primaryColor: '#eff6ff',
+        primaryTextColor: '#1a2332',
+        primaryBorderColor: '#2563eb',
+        lineColor: '#6b7a90',
+        secondaryColor: '#ecfdf5',
+        tertiaryColor: '#fef3c7',
+        fontFamily: '-apple-system, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif',
+        fontSize: '13px'
+      }
+    });
+  }
+})();

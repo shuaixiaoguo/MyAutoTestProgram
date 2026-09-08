@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/styles">
+        <file>styles.qss</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>icons/category.svg</file>
+        <file>icons/bus.svg</file>
+        <file>icons/device.svg</file>
+        <file>icons/interface.svg</file>
+        <file>icons/route.svg</file>
+        <file>icons/datablock.svg</file>
+        <file>icons/parameter.svg</file>
+        <file>icons/arrow_right.svg</file>
+        <file>icons/arrow_down.svg</file>
+    </qresource>
+</RCC>
